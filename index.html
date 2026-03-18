@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>Sheet-Tee Master</title>
+    <title>Strawberry Creek - Sheet-Tee</title>
     
-    <script src="config.js"></script>
-
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -26,14 +24,24 @@
 </head>
 <body>
     <div id="root"></div>
+
     <script type="text/babel">
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            clubId: "strawberry",
+            clubName: "Strawberry Creek",
+            tagline: "Private Golf & Social Club",
+            logoUrl: "./assets/logo.png",
+            groupPassword: "golf", 
+            supabaseUrl: "https://nwizmbkurxxqcfzmrzrx.supabase.co",
+            supabaseKey: "PASTE_YOUR_STRAWBERRY_ANON_KEY_HERE" 
+        };
+
         const { useState, useEffect } = React;
-        
-        // Connect to Supabase using the Key from config.js
         const sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
 
         function SheetTee() {
-            const [isAuth, setIsAuth] = useState(localStorage.getItem("st_auth_" + CONFIG.clubId) === "true");
+            const [isAuth, setIsAuth] = useState(localStorage.getItem("st_auth_strawberry") === "true");
             const [view, setView] = useState("signup");
             const [pass, setPass] = useState("");
             const [roster, setRoster] = useState([]);
@@ -42,16 +50,19 @@
             useEffect(() => {
                 if (isAuth) {
                     fetchData();
+                    // Real-time listener so updates show instantly
                     const sub = sb.channel('any').on('postgres_changes',{event:'*',schema:'public',table:'store'}, fetchData).subscribe();
                     return () => sb.removeChannel(sub);
                 }
             }, [isAuth]);
 
             const fetchData = async () => {
-                // IMPORTANT: This filters the database so Strawberry doesn't see Mulligan
-                const { data } = await sb.from('store').select('*').eq('club_id', CONFIG.clubId);
-                setRoster(data?.find(d => d.key === 'roster')?.value || []);
-                setSignups(data?.find(d => d.key === 'signups')?.value || {});
+                // The critical fix: we filter by 'strawberry'
+                const { data } = await sb.from('store').select('*').eq('club_id', 'strawberry');
+                const ros = data?.find(d => d.key === 'roster')?.value || [];
+                const sig = data?.find(d => d.key === 'signups')?.value || {};
+                setRoster(ros);
+                setSignups(sig);
             };
 
             const toggle = async (name, day) => {
@@ -59,11 +70,10 @@
                 if (!updated[day]) updated[day] = [];
                 updated[day] = updated[day].includes(name) ? updated[day].filter(n => n !== name) : [...updated[day], name];
                 
-                // Save back to the database with the club_id label
                 await sb.from('store').upsert({ 
                     key: 'signups', 
                     value: updated, 
-                    club_id: CONFIG.clubId 
+                    club_id: 'strawberry' 
                 });
             };
 
@@ -71,10 +81,9 @@
                 <div style={{height:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', padding:40, textAlign:'center'}}>
                     <img src={CONFIG.logoUrl} style={{width:100, margin:'0 auto 20px'}} />
                     <h1 style={{marginBottom:10}}>{CONFIG.clubName}</h1>
-                    <p className="gold" style={{fontSize:10, letterSpacing:2, marginBottom:30}}>{CONFIG.tagline}</p>
                     <input type="password" placeholder="Password" style={{background:'none', border:'1px solid #d4af37', padding:15, color:'#fff', borderRadius:8, textAlign:'center', width:'100%', marginBottom:15}} 
-                           onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter' && pass === CONFIG.groupPassword && (localStorage.setItem("st_auth_"+CONFIG.clubId,"true"), setIsAuth(true))} />
-                    <button className="btn-gold" onClick={() => pass === CONFIG.groupPassword ? (localStorage.setItem("st_auth_"+CONFIG.clubId,"true"), setIsAuth(true)) : alert("Denied")}>Unlock Clubhouse</button>
+                           onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter' && pass === CONFIG.groupPassword && (localStorage.setItem("st_auth_strawberry","true"), setIsAuth(true))} />
+                    <button className="btn-gold" onClick={() => pass === CONFIG.groupPassword ? (localStorage.setItem("st_auth_strawberry","true"), setIsAuth(true)) : alert("Denied")}>Unlock Clubhouse</button>
                 </div>
             );
 
@@ -92,7 +101,8 @@
                         {view === 'signup' && (
                             <div className="card">
                                 <h3 className="gold" style={{fontSize:11, textAlign:'center', marginBottom:20, letterSpacing:2}}>WEEKEND ROSTER</h3>
-                                {roster.map(p => (
+                                {roster.length === 0 ? <p style={{textAlign:'center', opacity:0.5}}>Loading names...</p> : 
+                                 roster.map(p => (
                                     <div key={p} className="player-row">
                                         <span>{p}</span>
                                         <div style={{display:'flex', gap:20}}>
@@ -104,13 +114,12 @@
                             </div>
                         )}
                         {view === 'tally' && (
-                             <div className="card">
-                                <h3 className="gold" style={{fontSize:11, textAlign:'center', marginBottom:20, letterSpacing:2}}>ATTENDANCE</h3>
+                            <div className="card">
                                 {['Sat', 'Sun'].map(day => (
-                                    <div key={day} style={{marginBottom:15}}>
-                                        <p className="gold" style={{fontSize:12, fontWeight:'bold'}}>{day.toUpperCase()}</p>
-                                        <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:5}}>
-                                            {signups[day]?.map(n => <span key={n} style={{background:'rgba(212,175,55,0.1)', padding:'4px 8px', borderRadius:4, fontSize:12}}>{n}</span>) || <span style={{opacity:0.5, fontSize:12}}>None</span>}
+                                    <div key={day} style={{marginBottom:20}}>
+                                        <h4 className="gold" style={{fontSize:12, borderBottom:'1px solid rgba(212,175,55,0.2)', paddingBottom:5}}>{day.toUpperCase()}</h4>
+                                        <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:10}}>
+                                            {signups[day]?.length > 0 ? signups[day].map(n => <span key={n} style={{background:'rgba(212,175,55,0.1)', padding:'5px 10px', borderRadius:6, fontSize:13}}>{n}</span>) : <span style={{opacity:0.3}}>No one yet</span>}
                                         </div>
                                     </div>
                                 ))}
@@ -120,7 +129,8 @@
                 </div>
             );
         }
-        ReactDOM.createRoot(document.getElementById("root")).render(<SheetTee />);
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(<SheetTee />);
     </script>
 </body>
 </html>
