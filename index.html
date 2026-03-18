@@ -1,94 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>Strawberry Creek - Sheet-Tee</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { background: #1a4a2e; font-family: Georgia, serif; color: #f0ead6; margin: 0; padding: 0; }
-        .gold { color: #d4af37; }
-        .card { background: rgba(255,255,255,0.05); border: 1px solid #d4af37; border-radius: 12px; padding: 20px; margin: 20px; }
-        .nav { display: flex; border-bottom: 1px solid #d4af37; background: rgba(0,0,0,0.2); }
-        .nav-item { flex: 1; padding: 15px; text-align: center; cursor: pointer; text-transform: uppercase; font-size: 12px; }
-        .active { border-bottom: 3px solid #d4af37; color: #d4af37; }
-        input[type="checkbox"] { width: 20px; height: 20px; accent-color: #d4af37; }
-        .btn { background: #d4af37; color: #1a4a2e; border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <meta name="theme-color" content="#1a4a2e"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Sheet-Tee"/>
+  <meta name="theme-color" content="#1a4a2e"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Sheet-Tee"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Club at Strawberry Creek Golf</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a4a2e; font-family: Georgia, serif; color: #f0ead6; }
+    input::placeholder { color: rgba(240,234,214,0.4); }
+    input { color: #f0ead6; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        // USE YOUR ORIGINAL STRAWBERRY KEYS HERE
-        const sb = supabase.createClient("https://nwizmbkurxxqcfzmrzrx.supabase.co", "YOUR_ACTUAL_STRAWBERRY_KEY");
+  <div id="root"></div>
+  <script>
+    const SUPABASE_URL = "https://nwizmbkurxxqcfzmrzrx.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53aXptYmt1cnh4cWNmem1yenJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjA3NDEsImV4cCI6MjA4ODgzNjc0MX0.52orb0uMjVJZu4JI-5hSgYVF5bYnBniDy5rIC2j19Xo";
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  </script>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
 
-        function App() {
-            const [view, setView] = useState("signup");
-            const [roster, setRoster] = useState([]);
-            const [signups, setSignups] = useState({});
+    const DEFAULT_PLAYERS = [
+      "Kraig Keeter", "Brett DeRousse", "George Dipple", "Doug O'Reilly",
+      "Scott Harris", "Jerry Pazdernik", "Dean Helmke", "Terry Regis",
+      "Tom Kuntz", "Mike Deny"
+    ];
 
-            useEffect(() => {
-                fetchData();
-            }, []);
+    const DEFAULT_ADMIN_PW = "keeter";
+    const DEFAULT_ACE_PW   = "keeter";
+    const GROUP_COLORS     = ["#d4af37","#7ec8a0","#7eb8d4","#d47e7e","#c4a07e","#b07ed4"];
+    const ROW1 = [["signup","Sign Up"],["tally","Who's In"],["groups","Randos"]];
+    const ROW2 = [["photos","📸 Pics"],["bunker","Keeter's Korner"],["ace","🏆 Hole in One"]];
 
-            const fetchData = async () => {
-                // This 'eq' filter is the ONLY thing needed to fix the "Green Screen"
-                const { data } = await sb.from('store').select('*').eq('club_id', 'strawberry');
-                setRoster(data?.find(d => d.key === 'roster')?.value || []);
-                setSignups(data?.find(d => d.key === 'signups')?.value || {});
-            };
+    function getWeekendDates() {
+      const now = new Date();
+      const day = now.getDay(); 
+      let diffToSat;
+      if (day === 6) diffToSat = 0;        
+      else if (day === 0) diffToSat = -1;  
+      else if (day === 5) diffToSat = 1;   
+      else diffToSat = (6 - day + 7) % 7; 
+      const w1sat = new Date(now); w1sat.setDate(now.getDate() + diffToSat);
+      const dates = {};
+      const offsets = { fri1:-1, sat:0, sun:1, mon1:2, fri2:6, fri:7, mon:8, mon2:9 };
+      const fmtFull = (d) => d.toLocaleDateString("en-US", { month:"short", day:"numeric" });
+      const fmtDay  = (d) => String(d.getDate());
+      const fmtMon  = (d) => d.toLocaleDateString("en-US", { month:"short" });
+      Object.entries(offsets).forEach(([k,o]) => {
+        const d = new Date(w1sat); d.setDate(w1sat.getDate() + o);
+        dates[k] = { full: fmtFull(d), day: fmtDay(d), mon: fmtMon(d), date: d };
+      });
+      const key = `${w1sat.getFullYear()}-${w1sat.getMonth()}-${w1sat.getDate()}`;
+      return { dates, key };
+    }
 
-            const toggle = async (name, day) => {
-                const updated = { ...signups };
-                if (!updated[day]) updated[day] = [];
-                updated[day] = updated[day].includes(name) ? updated[day].filter(n => n !== name) : [...updated[day], name];
-                await sb.from('store').upsert({ key: 'signups', value: updated, club_id: 'strawberry' });
-                setSignups(updated);
-            };
+    function chunkEvenly(arr) {
+      if (!arr.length) return [];
+      const n = arr.length;
+      const numGroups = Math.ceil(n / 4);
+      const base = Math.floor(n / numGroups);
+      const remainder = n % numGroups;
+      const groups = [];
+      let idx = 0;
+      for (let g = 0; g < numGroups; g++) {
+        const size = base + (g < remainder ? 1 : 0);
+        groups.push(arr.slice(idx, idx + size));
+        idx += size;
+      }
+      return groups;
+    }
 
-            return (
-                <div style={{maxWidth: 500, margin: '0 auto'}}>
-                    <div style={{textAlign: 'center', padding: '30px 0'}}>
-                        <img src="./assets/logo.png" style={{width: 80}} />
-                        <h2>Strawberry Creek</h2>
-                    </div>
-                    <div className="nav">
-                        <div className={`nav-item ${view==='signup'?'active':''}`} onClick={()=>setView('signup')}>Sign Up</div>
-                        <div className={`nav-item ${view==='tally'?'active':''}`} onClick={()=>setView('tally')}>Who's In</div>
-                    </div>
-                    {view === 'signup' ? (
-                        <div className="card">
-                            <h3 className="gold" style={{textAlign: 'center'}}>WEEKEND ROSTER</h3>
-                            {roster.map(p => (
-                                <div key={p} style={{display:'flex', justifyContent:'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
-                                    <span>{p}</span>
-                                    <div>
-                                        <label style={{marginRight: 10}}>SAT <input type="checkbox" checked={signups.Sat?.includes(p)} onChange={()=>toggle(p,'Sat')}/></label>
-                                        <label>SUN <input type="checkbox" checked={signups.Sun?.includes(p)} onChange={()=>toggle(p,'Sun')}/></label>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="card">
-                            {['Sat', 'Sun'].map(day => (
-                                <div key={day} style={{marginBottom: 20}}>
-                                    <h4 className="gold">{day.toUpperCase()}</h4>
-                                    <div style={{display:'flex', flexWrap:'wrap', gap: 10}}>
-                                        {signups[day]?.map(n => <span key={n} style={{background:'rgba(212,175,55,0.1)', padding:'5px 10px', borderRadius:5}}>{n}</span>)}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-    </script>
-</body>
-</html>
+    function compressImage(file, maxW = 800) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, maxW / img.width);
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", 0.65));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // --- UPDATED SUPABASE HELPERS WITH CLUB_ID FILTER ---
+    async function dbGet(key) {
+      // Filters for strawberry specifically to avoid conflicts
+      const { data } = await sb.from("store")
+        .select("value")
+        .eq("key", key)
+        .eq("club_id", "strawberry")
+        .single();
+      return data ? data.value : null;
+    }
+
+    async function dbSet(key, value) {
+      // Upserts with the club_id label
+      await sb.from("store").upsert(
+        { key, value, club_id: "strawberry" }, 
+        { onConflict: "key, club_id" }
+      );
+    }
+
+    function dbListen(key, cb) {
+      // Listens only to strawberry-specific changes
+      const ch = sb.channel("store-" + key)
+        .on("postgres_changes", { 
+          event: "*", 
+          schema: "public", 
+          table: "store", 
+          filter: `key=eq.${key}` 
+        },
+        payload => {
+          // Verify the change belongs to strawberry before updating UI
+          if (payload.new && payload.new.club_id === "strawberry") {
+            cb(payload.new.value ?? null);
+          }
+        })
+        .subscribe();
+      return () => sb.removeChannel(ch);
+    }
+
+    function GolfBallLogo({ size = 64 }) {
+      return (
+        <svg width={size} height={size * 0.85} viewBox="0 0 120 102" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="ballL" cx="40%" cy="35%" r="60%">
+              <stop offset="0%" stopColor="#ffffff"/>
+              <stop offset="60%" stopColor="#e8e8e8"/>
+              <stop offset="100%" stopColor="#c8c8c8"/>
+            </radialGradient>
+            <radialGradient id="ballR" cx="60%" cy="35%" r="60%">
+              <stop offset="0%" stopColor="#ffffff"/>
+              <stop offset="60%" stopColor="#e8e8e8"/>
+              <stop offset="100%" stopColor="#c8c8c8"/>
+            </radialGradient>
+            <clipPath id="clipL"><circle cx="38" cy="46" r="34"/></clipPath>
+            <clipPath id="clipR"><circle cx="82" cy="46" r="34"/></clipPath>
+          </defs>
+          <ellipse cx="38" cy="86" rx="28" ry="6" fill="rgba(0,0,0,0.25)"/>
+          <ellipse cx="82" cy="86" rx="28" ry="6" fill="rgba(0,0,0,0.25)"/>
+          <circle cx="38" cy="46" r="34" fill="url(#ballL)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
+          <g clipPath="url(#clipL)" opacity="0.35">
+            <circle cx="28" cy="36" r="3.2" fill="none" stroke="#999" strokeWidth="1"/>
+            <circle cx="40" cy="30" r="3.2" fill="none" stroke="#999
