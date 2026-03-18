@@ -4,11 +4,14 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <title>Sheet-Tee Master</title>
+    
     <script src="config.js"></script>
+
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #1a4a2e; font-family: Georgia, serif; color: #f0ead6; }
@@ -25,6 +28,8 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
+        
+        // Connect to Supabase using the Key from config.js
         const sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
 
         function SheetTee() {
@@ -37,14 +42,13 @@
             useEffect(() => {
                 if (isAuth) {
                     fetchData();
-                    // Live Update Listener
                     const sub = sb.channel('any').on('postgres_changes',{event:'*',schema:'public',table:'store'}, fetchData).subscribe();
                     return () => sb.removeChannel(sub);
                 }
             }, [isAuth]);
 
             const fetchData = async () => {
-                // THE CLEAN FIX: This filters by your new 'club_id' column
+                // IMPORTANT: This filters the database so Strawberry doesn't see Mulligan
                 const { data } = await sb.from('store').select('*').eq('club_id', CONFIG.clubId);
                 setRoster(data?.find(d => d.key === 'roster')?.value || []);
                 setSignups(data?.find(d => d.key === 'signups')?.value || {});
@@ -54,7 +58,13 @@
                 const updated = { ...signups };
                 if (!updated[day]) updated[day] = [];
                 updated[day] = updated[day].includes(name) ? updated[day].filter(n => n !== name) : [...updated[day], name];
-                await sb.from('store').upsert({ key: 'signups', value: updated, club_id: CONFIG.clubId });
+                
+                // Save back to the database with the club_id label
+                await sb.from('store').upsert({ 
+                    key: 'signups', 
+                    value: updated, 
+                    club_id: CONFIG.clubId 
+                });
             };
 
             if (!isAuth) return (
@@ -88,6 +98,19 @@
                                         <div style={{display:'flex', gap:20}}>
                                             <label style={{textAlign:'center'}}><div style={{fontSize:9, opacity:0.5}}>SAT</div><input type="checkbox" checked={signups.Sat?.includes(p)} onChange={()=>toggle(p,'Sat')}/></label>
                                             <label style={{textAlign:'center'}}><div style={{fontSize:9, opacity:0.5}}>SUN</div><input type="checkbox" checked={signups.Sun?.includes(p)} onChange={()=>toggle(p,'Sun')}/></label>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {view === 'tally' && (
+                             <div className="card">
+                                <h3 className="gold" style={{fontSize:11, textAlign:'center', marginBottom:20, letterSpacing:2}}>ATTENDANCE</h3>
+                                {['Sat', 'Sun'].map(day => (
+                                    <div key={day} style={{marginBottom:15}}>
+                                        <p className="gold" style={{fontSize:12, fontWeight:'bold'}}>{day.toUpperCase()}</p>
+                                        <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:5}}>
+                                            {signups[day]?.map(n => <span key={n} style={{background:'rgba(212,175,55,0.1)', padding:'4px 8px', borderRadius:4, fontSize:12}}>{n}</span>) || <span style={{opacity:0.5, fontSize:12}}>None</span>}
                                         </div>
                                     </div>
                                 ))}
